@@ -133,9 +133,10 @@
             const rawText = urlInput.value.trim();
             if (!rawText) return showError('請貼上網址或分享文案');
 
-            // 自動萃取網址
-            const urlMatch = rawText.match(/(https?:\/\/[^\s]+)/);
-            const targetUrl = urlMatch ? urlMatch[0] : rawText;
+            // 自動萃取網址 (強化版，避免黏到中文字)
+            const urlMatch = rawText.match(/https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/[^\s\u4e00-\u9fa5]*)?/);
+            let targetUrl = urlMatch ? urlMatch[0] : rawText;
+            targetUrl = targetUrl.replace(/[^\x20-\x7E]/g, ''); // 強制移除非 ASCII 字符
 
             // 改變按鈕狀態為「載入中」
             parseBtn.disabled = true;
@@ -214,3 +215,6 @@
     </script>
 </body>
 </html>
+
+
+
