@@ -19,30 +19,34 @@ app.get('/api/xhs', async (req, res) => {
         const rawUrl = req.query.url;
         if (!rawUrl) return res.status(400).json({ error: '請提供 url 參數' });
 
-        // 終極嚴格過濾：只抓出單純的網址，完全拋棄換行符號、空格與中文字
+        // 嚴格提取網址
         const urlMatch = rawUrl.match(/(https?:\/\/[a-zA-Z0-9\.\-\/_]+)/);
-        if (!urlMatch) {
-            return res.status(400).json({ error: '無效的網址格式' });
-        }
-        const targetUrl = urlMatch[1]; // 絕對乾淨的網址
+        if (!urlMatch) return res.status(400).json({ error: '找不到有效網址' });
+        const targetUrl = urlMatch[0];
 
-        // 加入手機版 User-Agent 降低被小紅書封鎖的機率
+        // 【大絕招】偽裝成 Googlebot (Google 搜尋引擎的爬蟲)，多數網站不會封鎖它
         const headers = {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'zh-TW,zh;q=0.9',
-            'Cookie': 'a1=18d6a8b7c9; webId=1234567890;'
+            'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Connection': 'keep-alive'
         };
         
-        const response = await axios.get(targetUrl, { headers });
+        // 取得網頁內容
+        const response = await axios.get(targetUrl, { 
+            headers,
+            maxRedirects: 5,
+            timeout: 10000 // 設定 10 秒超時，避免伺服器卡死
+        });
         const html = response.data;
 
+        // 尋找隱藏的 JSON
         const stateRegex = /window\.__INITIAL_STATE__\s*=\s*({.*?})<\/script>/;
         const ssrRegex = /window\.__INITIAL_SSR_STATE__\s*=\s*({.*?})<\/script>/;
         const stateMatch = html.match(stateRegex) || html.match(ssrRegex);
 
         if (!stateMatch) {
-            return res.status(403).json({ error: '小紅書安全驗證阻擋了抓取，請稍後再試。' });
+            return res.status(403).json({ error: '小紅書的反爬蟲機制擋住了 Render 伺服器的 IP，請稍後再試。' });
         }
         
         const xhsData = JSON.parse(stateMatch[1]);
@@ -50,7 +54,7 @@ app.get('/api/xhs', async (req, res) => {
         const noteId = Object.keys(noteMap)[0];
         const noteData = noteMap[noteId]?.note || noteMap;
 
-        if (!noteData || !noteData.type) throw new Error('找不到筆記詳細內容');
+        if (!noteData || !noteData.type) throw new Error('找不到筆記內容');
 
         const result = {
             platform: '小紅書',
@@ -73,8 +77,9 @@ app.get('/api/xhs', async (req, res) => {
         res.json(result);
 
     } catch (error) {
+        // 詳細記錄錯誤，回傳給前端顯示
         console.error("API 錯誤:", error.message);
-        res.status(500).json({ error: error.message || '伺服器解析失敗' });
+        res.status(500).json({ error: '伺服器被小紅書拒絕連線 (IP 風控)，詳情: ' + error.message });
     }
 });
 
