@@ -21,7 +21,6 @@
     </header>
 
     <main class="max-w-md mx-auto px-4 py-6 space-y-4">
-        
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
             <i data-lucide="check-circle-2" class="w-4 h-4 flex-shrink-0"></i>
             已連接您的雲端伺服器 (xhs-api-i55r)
@@ -34,7 +33,7 @@
                     <div class="absolute inset-y-0 left-0 pl-3 pt-3.5 flex items-start pointer-events-none">
                         <i data-lucide="link" class="w-5 h-5 text-slate-400"></i>
                     </div>
-                    <textarea id="urlInput" rows="4" placeholder="例如：這件衣服太好看了吧！複製後打開【小紅書】... http://xhslink.com/xxx" class="block w-full pl-10 pr-10 py-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-shadow bg-slate-50 text-base resize-none"></textarea>
+                    <textarea id="urlInput" rows="4" placeholder="貼上小紅書分享連結..." class="block w-full pl-10 pr-10 py-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-shadow bg-slate-50 text-base resize-none"></textarea>
                     <button id="clearBtn" class="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-600 bg-slate-200 rounded-full transition-colors hide">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
@@ -46,9 +45,12 @@
             </button>
         </div>
 
-        <div id="errorBox" class="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-3 hide">
-            <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
-            <p id="errorMsg" class="text-sm font-medium"></p>
+        <div id="errorBox" class="bg-red-50 text-red-600 p-4 rounded-2xl flex items-start gap-3 hide">
+            <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+            <div class="space-y-1">
+                <p class="text-sm font-bold">解析發生錯誤</p>
+                <p id="errorMsg" class="text-xs"></p>
+            </div>
         </div>
 
         <div id="resultBox" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 space-y-5 hide">
@@ -64,9 +66,6 @@
                     <span id="imageCount"></span>
                 </div>
                 <div id="imageGrid" class="grid grid-cols-2 gap-3"></div>
-                <p class="text-xs text-center text-slate-500 bg-slate-50 py-3 rounded-xl border border-slate-100">
-                    💡 提示：點擊右下角按鈕開啟，長按圖片即可儲存。
-                </p>
             </div>
 
             <div id="videoContainer" class="space-y-4 hide">
@@ -86,8 +85,6 @@
 
     <script>
         lucide.createIcons();
-
-        // 綁定您的 Render 專屬 API
         const API_URL = 'https://xhs-api-i55r.onrender.com/api/xhs';
 
         const urlInput = document.getElementById('urlInput');
@@ -112,13 +109,11 @@
 
         parseBtn.addEventListener('click', async () => {
             const rawText = urlInput.value.trim();
-            if (!rawText) return showError('請貼上網址或分享文案');
+            if (!rawText) return showError('請貼上網址');
 
-            // 嚴格過濾網址，只保留英數字元與符號，徹底排除換行與中文
             const urlMatch = rawText.match(/(https?:\/\/[a-zA-Z0-9\.\-\/_]+)/);
-            if (!urlMatch) return showError('在文字中找不到有效的網址');
-            
-            const targetUrl = urlMatch[0]; // 最乾淨的網址
+            if (!urlMatch) return showError('無效的網址格式');
+            const targetUrl = urlMatch[1];
 
             parseBtn.disabled = true;
             parseBtn.classList.replace('bg-rose-500', 'bg-rose-300');
@@ -128,7 +123,6 @@
             resultBox.classList.add('hide');
 
             try {
-                // 使用絕對路徑呼叫 API
                 const response = await fetch(`${API_URL}?url=${encodeURIComponent(targetUrl)}`);
                 const data = await response.json();
 
@@ -166,7 +160,7 @@
                 lucide.createIcons();
 
             } catch (err) {
-                showError(err.message || '連線伺服器失敗，請確認 API 狀態。');
+                showError(err.message || '連線伺服器失敗。');
             } finally {
                 parseBtn.disabled = false;
                 parseBtn.classList.replace('bg-rose-300', 'bg-rose-500');
