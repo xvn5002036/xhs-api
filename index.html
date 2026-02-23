@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>專屬無水擷取器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入圖示庫 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .hide { display: none !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-10 selection:bg-rose-200">
+
+    <!-- 頂部導航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-20">
+        <div class="max-w-md mx-auto px-4 py-4 flex items-center gap-2 text-rose-500">
+            <i data-lucide="sparkles" class="w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-tight">專屬無水擷取器</h1>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 py-6 space-y-4">
+        
+        <!-- 狀態提示 -->
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
+            <i data-lucide="check-circle-2" class="w-4 h-4 flex-shrink-0"></i>
+            已連接您的雲端伺服器 API
+        </div>
+
+        <!-- 輸入區塊 -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 space-y-4">
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-slate-700 ml-1">貼上分享連結 (可自動過濾文案)</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 pt-3.5 flex items-start pointer-events-none">
+                        <i data-lucide="link" class="w-5 h-5 text-slate-400"></i>
+                    </div>
+                    <!-- 輸入框 -->
+                    <textarea id="urlInput" rows="4" placeholder="例如：這件衣服太好看了吧！複製後打開【小紅書】... http://xhslink.com/xxx" class="block w-full pl-10 pr-10 py-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-shadow bg-slate-50 text-base resize-none"></textarea>
+                    
+                    <!-- 清除按鈕 -->
+                    <button id="clearBtn" class="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-600 bg-slate-200 rounded-full transition-colors hide">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 解析按鈕 -->
+            <button id="parseBtn" class="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-4 rounded-2xl transition-all active:scale-[0.98] shadow-md shadow-rose-200">
+                <span id="btnText">一鍵去浮水印解析</span>
+            </button>
+        </div>
+
+        <!-- 錯誤訊息提示框 -->
+        <div id="errorBox" class="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-3 hide">
+            <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
+            <p id="errorMsg" class="text-sm font-medium"></p>
+        </div>
+
+        <!-- 結果顯示區塊 -->
+        <div id="resultBox" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 space-y-5 hide">
+            <!-- 成功標籤 -->
+            <div class="flex items-center gap-2 text-rose-600 font-medium bg-rose-50 px-3 py-1.5 rounded-full text-sm w-fit">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                <span id="platformName">小紅書</span> 解析成功
+            </div>
+            
+            <!-- 標題 -->
+            <h3 id="resultTitle" class="font-medium text-slate-800 line-clamp-2 leading-snug text-lg"></h3>
+            
+            <!-- 圖片專用容器 -->
+            <div id="imageContainer" class="space-y-4 hide">
+                <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                    <i data-lucide="image" class="w-4 h-4 text-rose-500"></i>
+                    <span id="imageCount"></span>
+                </div>
+                <!-- 動態插入圖片的網格 -->
+                <div id="imageGrid" class="grid grid-cols-2 gap-3"></div>
+                <p class="text-xs text-center text-slate-500 bg-slate-50 py-3 rounded-xl border border-slate-100">
+                    💡 提示：點擊右下角按鈕開啟，長按圖片即可儲存。
+                </p>
+            </div>
+
+            <!-- 影片專用容器 -->
+            <div id="videoContainer" class="space-y-4 hide">
+                <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                    <i data-lucide="video" class="w-4 h-4 text-rose-500"></i>
+                    <span>成功獲取高畫質無水印影片</span>
+                </div>
+                <!-- 影片播放器 -->
+                <div class="aspect-[3/4] bg-black rounded-2xl overflow-hidden relative shadow-inner">
+                    <video id="videoPlayer" controls class="w-full h-full object-contain"></video>
+                </div>
+                <!-- 影片下載按鈕 -->
+                <a id="videoDownload" target="_blank" class="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] shadow-md shadow-rose-200">
+                    <i data-lucide="download" class="w-5 h-5"></i> 開啟並下載影片
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 1. 初始化圖示
+        lucide.createIcons();
+
+        // 2. 獲取 DOM 元素
+        const urlInput = document.getElementById('urlInput');
+        const clearBtn = document.getElementById('clearBtn');
+        const parseBtn = document.getElementById('parseBtn');
+        const btnText = document.getElementById('btnText');
+        const errorBox = document.getElementById('errorBox');
+        const errorMsg = document.getElementById('errorMsg');
+        const resultBox = document.getElementById('resultBox');
+
+        // 3. 綁定「清除按鈕」的顯示與隱藏
+        urlInput.addEventListener('input', () => {
+            if (urlInput.value) clearBtn.classList.remove('hide');
+            else clearBtn.classList.add('hide');
+        });
+
+        clearBtn.addEventListener('click', () => {
+            urlInput.value = '';
+            clearBtn.classList.add('hide');
+            resultBox.classList.add('hide');
+            errorBox.classList.add('hide');
+        });
+
+        // 4. 點擊「解析」按鈕的核心邏輯
+        parseBtn.addEventListener('click', async () => {
+            const rawText = urlInput.value.trim();
+            if (!rawText) return showError('請貼上網址或分享文案');
+
+            // 自動萃取網址
+            const urlMatch = rawText.match(/(https?:\/\/[^\s]+)/);
+            const targetUrl = urlMatch ? urlMatch[0] : rawText;
+
+            // 改變按鈕狀態為「載入中」
+            parseBtn.disabled = true;
+            parseBtn.classList.replace('bg-rose-500', 'bg-rose-300');
+            btnText.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin inline-block mr-2"></i>正在向伺服器請求...';
+            lucide.createIcons();
+            
+            // 隱藏舊的結果和錯誤
+            errorBox.classList.add('hide');
+            resultBox.classList.add('hide');
+
+            try {
+                // 呼叫同一個伺服器上的 API 路由
+                // 因為 index.html 和 API 都在同一個 Render 伺服器上，所以可以直接用 /api/xhs
+                const response = await fetch(`/api/xhs?url=${encodeURIComponent(targetUrl)}`);
+                const data = await response.json();
+
+                if (!response.ok || data.error) throw new Error(data.error || '解析失敗');
+
+                // 成功取得資料，開始更新畫面
+                document.getElementById('resultTitle').textContent = data.title;
+                
+                const imgContainer = document.getElementById('imageContainer');
+                const vidContainer = document.getElementById('videoContainer');
+                
+                imgContainer.classList.add('hide');
+                vidContainer.classList.add('hide');
+
+                if (data.type === 'image' && data.images) {
+                    // 顯示圖片介面
+                    imgContainer.classList.remove('hide');
+                    document.getElementById('imageCount').textContent = `成功獲取 ${data.images.length} 張無浮水印原圖`;
+                    
+                    const grid = document.getElementById('imageGrid');
+                    grid.innerHTML = ''; // 清空舊圖
+                    
+                    // 動態生成圖片 HTML
+                    data.images.forEach((img, idx) => {
+                        grid.innerHTML += `
+                            <div class="aspect-[3/4] rounded-xl overflow-hidden relative border border-slate-200 shadow-sm bg-slate-100">
+                                <img src="${img}" class="w-full h-full object-cover" />
+                                <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[11px] px-2.5 py-1 rounded-full">圖 ${idx + 1}</div>
+                                <a href="${img}" target="_blank" rel="noreferrer" class="absolute bottom-2 right-2 bg-white/90 p-2.5 rounded-full shadow-lg text-rose-500 active:scale-95 transition-transform">
+                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        `;
+                    });
+                } else if (data.type === 'video' && data.videoUrl) {
+                    // 顯示影片介面
+                    vidContainer.classList.remove('hide');
+                    document.getElementById('videoPlayer').src = data.videoUrl;
+                    document.getElementById('videoDownload').href = data.videoUrl;
+                }
+
+                // 顯示結果區塊並重新渲染圖示
+                resultBox.classList.remove('hide');
+                lucide.createIcons();
+
+            } catch (err) {
+                // 顯示錯誤
+                showError(err.message || '連線伺服器失敗，請確認伺服器是否正常運作。');
+            } finally {
+                // 恢復按鈕原本的狀態
+                parseBtn.disabled = false;
+                parseBtn.classList.replace('bg-rose-300', 'bg-rose-500');
+                btnText.textContent = '一鍵去浮水印解析';
+            }
+        });
+
+        // 顯示錯誤訊息的函式
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorBox.classList.remove('hide');
+        }
+    </script>
+</body>
+</html>
